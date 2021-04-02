@@ -1,0 +1,34 @@
+```{r,echo=FALSE,results="hide"}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+rmarkdown::render("/home/baydogan/Courses/IE360/Guidelines/example_homework_0.Rmd",output_format="pdf_document")
+rmarkdown::render("/home/baydogan/Courses/IE360/Guidelines/example_homework_0.Rmd",output_format="html_document")
+```
+
+# <span style="color:red">Title: Interesting Forecasting Applications</span>
+### <span style="color:green">Author: İbrahim Özgürcan Öztaş</span>
+
+Here you can see my time series examples below.
+
+1. [Time Series Example of Ocean Tides](https://core.ac.uk/download/pdf/70606283.pdf)
+
+2. [Time Series Example of Counts of Sunspot](https://www.kaggle.com/allen21huang/time-series-analysis-of-sunspots)
+
+3. [Time Series Example of Stock Market](https://www.kdnuggets.com/2020/01/stock-market-forecasting-time-series-analysis.html)
+
+4. [Time Series Example of Hotel Room Prices](https://www.mdpi.com/2071-1050/12/18/7334/pdf)
+
+5. [Time Series Example of Animal Sightings](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0190706)
+
+6. [Time Series Example with R](https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html)
+
+7. [Time Series Example with R II](https://www.pluralsight.com/guides/time-series-forecasting-using-r)
+
+8. [Time Series Example With R III](https://kourentzes.com/forecasting/wp-content/uploads/2016/06/Forecasting-with-R-notes.pdf)
+
+9. [Time Series Example with R IV](https://blogs.oracle.com/ai-and-datascience/post/introduction-to-forecasting-with-arima-in-r)
+
+10. [Time Series Example with R V](http://ucanalytics.com/blogs/step-by-step-graphic-guide-to-forecasting-through-arima-modeling-in-r-manufacturing-case-study-example/)
