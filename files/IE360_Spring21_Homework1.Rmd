@@ -1,2 +1,158 @@
-# install.packages("devtools")
-devtools::install_github("algopoly/EVDS")
+---
+title: "IE360_Spring21_Homework1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# IE360 Spring 2021 Homework 1
+
+For Homework 1, I've been requested to gather at least 3 different data clusters from EVDS platform of the Turkish Republic under several constraints and plot them separately.
+
+In the code chunk below, I've installed the necessary prerequisite packages for EVDS API and also installed ggplot2 for plotting purposes.
+
+```{r, echo=FALSE, results=FALSE, message=FALSE}
+# EVDS and its prerequisite packages are installed here.
+install.packages("devtools", repos = "http://cran.us.r-project.org")
+devtools::install_github("algopoly/EVDS", force = TRUE)
+install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+
+# setting EVDS key
+EVDS::set_evds_key("UIwrpiUF7p")
+
+# loading EVDS and ggplot2
+library(EVDS)
+library(ggplot2)
+```
+
+## Before Starting: A Necessary Utility Function
+
+In the two data set out of 3, I had to convert the given date structures to suitable form of R date strings, thus I've written my own function.
+
+```{r, eval=FALSE, echo=FALSE}
+# I've set plot width and height for all plots below.
+options(repr.plot.width=30, repr.plot.height=18)
+```
+
+```{r}
+# the dates in the series are not formatted in any built-in type, so I've written a formatter
+special_dateconv <- function(x) {
+    tokens <- unlist(strsplit(x, "-"))
+    month_length <- nchar(tokens[2])
+    if (month_length == 1) {
+        tokens[2] <- paste("0", tokens[2], sep = "")
+    }
+    tokens <- append(tokens, c("01"))
+    str_date <- paste(tokens, collapse = "-")
+    str_date
+}
+```
+
+## First Plot: Is there any abnormal change of interest rates of EUR, USD, and TRY happened from 2011-January to 2021-January?
+
+In this plot, I've collected my data from EVDS and analyzed it to manipulate its structure much better.
+
+```{r}
+# For my first analysis, I've retrieved the interest rates for deposits in EUR, USD, and TRY and plotted them from January 1st, 2011 to January 1st, 2021.
+df <- get_series(series = c("TP.MT210AGS.EUR.MT06","TP.MT210AGS.TRY.MT06", "TP.MT210AGS.USD.MT06"), start_date = "01-01-2011", end_date = "01-01-2021")
+# df has unnecessary columns in it so I've only selected the items
+df_cleaned <- df$items
+# df_cleaned also has unnecessary columnt UNIXTIME, thus I've selected the meaningful ones.
+df1 <- df_cleaned[c("Tarih", "TP_MT210AGS_EUR_MT06", "TP_MT210AGS_TRY_MT06", "TP_MT210AGS_USD_MT06")]
+
+# At first, I've formatted the date strings to the correct form via the function I've written above.
+df1[1] <- apply(df1[1], FUN = special_dateconv, MARGIN = 1)
+# Then, I've converted the suitable date strings to the date objects of R.
+df1$Tarih <- as.Date(df1$Tarih, format = "%Y-%m-%d")
+# Hence, I've converted the decimal strings to double values. 
+df1[, 2:4] <- sapply(df1[, 2:4], as.numeric)
+# There were several incomplete observations, thus I've omitted them.
+df1 <- na.omit(df1)
+```
+
+Then, I've plotted it via ggplot2 to visualize the data points in a compact format.
+```{r}
+# I've plotted the data of my first analysis below.
+ggplot(df1, aes(x=Tarih)) + 
+  geom_line(aes(y=TP_MT210AGS_EUR_MT06, colour = "EUR")) + 
+  geom_line(aes(y=TP_MT210AGS_USD_MT06, colour = "USD")) + 
+  geom_line(aes(y=TP_MT210AGS_TRY_MT06, colour = "TRY")) + 
+  scale_colour_manual("", breaks = c("EUR", "USD", "TRY"), values = c("green", "blue", "black")) + 
+  labs(colour = "Currencies", title = "Interest Rate Changes of EUR, USD, and TRY", y="Interest Rate Percentage") + 
+  theme(legend.text = element_text(size = 16), axis.title.y = element_text(size = 19), axis.title.x = element_text(size = 19), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+In this plot, I've observed that during 2012 April, there's a general decrease over TRY, USD, and EUR until mid 2013, which is connected to the global market events during 2012-2013. Also, there's an abnormal state in mid-2018, in which all Turkish citizens have elected for the Presidential Regime for Erdogan which led the interest rates to go higher than before. After that, there's the local elections for the municipality, and again the interest rates rose a bit. Hence, all three dropped until April 2020, in which the pandemic has made its dent in the economic structure of Turkey.
+
+## Second Plot: Are exchange rates of USD, EUR, CAD, CHF, and GBP changed over drastically from January 2011 to January 2021?
+
+In this plot, I've collected my data from EVDS and analyzed it to manipulate its structure much better.
+
+```{r}
+# For my second analysis, I've retrieved the interest rates for deposits in EUR, USD, and TRY and plotted them from January 1st, 2011 to January 1st, 2021.
+df2 <- get_series(series = c("TP.DK.USD.A.YTL","TP.DK.EUR.A.YTL", "TP.DK.CAD.A.YTL", "TP.DK.CHF.A.YTL", "TP.DK.GBP.A.YTL"), start_date = "01-01-2011", end_date = "01-01-2021")
+# df has unnecessary columns in it so I've only selected the items
+df2_cleaned <- df2$items
+# df_cleaned also has unnecessary columnt UNIXTIME, thus I've selected the meaningful ones.
+df3 <- df2_cleaned[c("Tarih", "TP_DK_USD_A_YTL", "TP_DK_EUR_A_YTL", "TP_DK_CAD_A_YTL", "TP_DK_CHF_A_YTL", "TP_DK_GBP_A_YTL")]
+
+# At first, I've converted the date strings to the date objects.
+df3$Tarih <- as.Date(df3$Tarih, format = "%d-%m-%Y")
+# Hence, I've converted the decimal strings to double values. 
+df3[, 2:6] <- sapply(df3[, 2:6], as.numeric)
+# There were several incomplete observations, thus I've omitted them.
+df3 <- na.omit(df3)
+```
+
+Then, I've plotted it via ggplot2 to visualize the data points in a compact format.
+```{r}
+# I've plotted the data of my second analysis below.
+ggplot(df3, aes(x=Tarih)) + geom_line(aes(y=TP_DK_USD_A_YTL, colour = "USD")) + 
+  geom_line(aes(y=TP_DK_EUR_A_YTL, colour = "EUR")) + 
+  geom_line(aes(y=TP_DK_CAD_A_YTL, colour = "CAD")) + 
+  geom_line(aes(y=TP_DK_CHF_A_YTL, colour = "CHF")) + 
+  geom_line(aes(y=TP_DK_GBP_A_YTL, colour = "GBP")) + 
+  scale_colour_manual("", breaks = c("USD", "EUR", "CAD", "CHF", "GBP"), values = c("blue", "green", "purple", "orange", "red")) + 
+  labs(colour = "Currencies", title = "ER Changes of EUR, USD, CAD, CHF, GBP", y="Exchange Rate") + 
+  theme(legend.text = element_text(size = 16), axis.title.y = element_text(size = 19), axis.title.x = element_text(size = 19), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+In this plot, I've aimed to observe the overall trend of the 5 currencies I've selected and I've realized that until June 2018, there's a loose pattern that occurs every 2 years, which consists of a slight increase and a slight decrease close to the increase amount. Therefore, the currency exchange rates are in an increasing trend, but these increases are not abnormal, they are results of economic events happened mostly in Turkey. However, in June 2018, Turkish citizens have voted for Presidential Regime for Erdogan and that's the point when the Turkish economy went unstable. An unexpected chain of political events resulted in economic catastrophe for Turkish Lira against other currencies.
+
+## Third Plot: Employment status of the Turkish citizens
+
+In this plot, I've collected my data from EVDS and analyzed it to manipulate its structure much better.
+```{r}
+# For my second analysis, I've retrieved the interest rates for deposits in EUR, USD, and TRY and plotted them from January 1st, 2011 to January 1st, 2021.
+df4 <- get_series(series = c("TP.YISGUCU2.G1","TP.YISGUCU2.G2", "TP.YISGUCU2.G3", "TP.YISGUCU2.G4"), start_date = "01-01-2014", end_date = "01-01-2021")
+# df has unnecessary columns in it so I've only selected the items
+df4_cleaned <- df4$items
+# df_cleaned also has unnecessary columnt UNIXTIME, thus I've selected the meaningful ones.
+df5 <- df4_cleaned[c("Tarih", "TP_YISGUCU2_G1", "TP_YISGUCU2_G2", "TP_YISGUCU2_G3", "TP_YISGUCU2_G4")]
+
+#
+df5[1] <- apply(df5[1], FUN = special_dateconv, MARGIN = 1)
+# At first, I've converted the date strings to the date objects.
+df5$Tarih <- as.Date(df5$Tarih, format = "%Y-%m-%d")
+# Hence, I've converted the decimal strings to double values. 
+df5[, 2:5] <- sapply(df5[, 2:5], as.numeric)
+# There were several incomplete observations, thus I've omitted them.
+df5 <- na.omit(df5)
+```
+
+Then, I've plotted it via ggplot2 to visualize the data points in a compact format.
+```{r}
+# I've plotted the data of my third analysis below.
+ggplot(df5, aes(x=Tarih)) + 
+  geom_line(aes(y=TP_YISGUCU2_G1, colour = "Population of 15+ yo")) + 
+  geom_line(aes(y=TP_YISGUCU2_G2, colour = "Labour Force")) + 
+  geom_line(aes(y=TP_YISGUCU2_G3, colour = "Employed")) + 
+  geom_line(aes(y=TP_YISGUCU2_G4, colour = "Unemployed")) + 
+  scale_colour_manual("", breaks = c("Population of 15+ yo", "Labour Force", "Employed", "Unemployed"), values = c("black", "green", "blue", "red")) + 
+  labs(colour = "Employment Status", title = "Employment Status", y="Amount") + 
+  theme(legend.text = element_text(size = 16), axis.title.y = element_text(size = 19), axis.title.x = element_text(size = 19), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+In this plot, I've tried to understand the trend of employment from January 2014 to January 2021, which led me to an annual pattern for both employment and unemployment. I presume that at the start of each year, the official recruiting of government workers were announced, thus the employment has rose a bit until the middle of each year, then several reasons have decreased the employment a bit and increased the unemployment. However, the population seems increasing in a linear fashion, so I observed both unemployment and employment have increased in a linear fashion.
