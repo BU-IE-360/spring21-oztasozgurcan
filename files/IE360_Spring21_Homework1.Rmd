@@ -50,6 +50,7 @@ special_dateconv <- function(x) {
 }
 ```
 
+# Part A:
 ## First Plot: Is there any abnormal change of interest rates of EUR, USD, and TRY happened from 2011-January to 2021-January?
 
 In this plot, I've collected my data from EVDS and analyzed it to manipulate its structure much better.
@@ -156,3 +157,87 @@ ggplot(df5, aes(x=Tarih)) +
 ```
 
 In this plot, I've tried to understand the trend of employment from January 2014 to January 2021, which led me to an annual pattern for both employment and unemployment. I presume that at the start of each year, the official recruiting of government workers were announced, thus the employment has rose a bit until the middle of each year, then several reasons have decreased the employment a bit and increased the unemployment. However, the population seems increasing in a linear fashion, so I observed both unemployment and employment have increased in a linear fashion.
+
+# Part B:
+## Search terms' correlation with USD interest rates in Turkey
+
+In this part, I've collected data from Google trends for several keywords, such as "Dolar", "Başkanlık", "Albayrak", "Altın", and "İşsizlik". Then, I've plotted these data sets with the USD interest rate dataset in the same plot, which led me to several deductions:
+
+```{r}
+dollar_df <- read.csv("../data/hw1/dolar_time_series.csv", header = FALSE) 
+presidency_df <- read.csv("../data/hw1/başkanlık_time_series.csv", header = FALSE)
+ba_df <- read.csv("../data/hw1/albayrak_time_series.csv", header = FALSE)
+gold_df <- read.csv("../data/hw1/altın_time_series.csv", header = FALSE)
+unemployment_df <- read.csv("../data/hw1/işsizlik_time_series.csv", header = FALSE)
+```
+
+```{r}
+dollar_df <- dollar_df[3:123,]
+presidency_df <- presidency_df[3:123,]
+ba_df <- ba_df[3:123,]
+gold_df <- gold_df[3:123,]
+unemployment_df <- unemployment_df[3:123,]
+```
+
+```{r}
+special_dateconv_2 <- function(x) {
+    tokens <- unlist(strsplit(x, "-"))
+    tokens <- append(tokens, c("01"))
+    str_date <- paste(tokens, collapse = "-")
+    str_date
+}
+```
+
+```{r}
+dollar_df[1] <- apply(dollar_df[1], FUN = special_dateconv_2, MARGIN = 1)
+dollar_df$V1 <- as.Date(dollar_df$V1, format = "%Y-%m-%d")
+dollar_df[, 2] <- sapply(dollar_df[, 2], as.numeric)
+usd_rate_df <- data.frame(df1["Tarih"], df1["TP_MT210AGS_USD_MT06"])
+max_usd_rate <- max(usd_rate_df$TP_MT210AGS_USD_MT06)
+usd_rate_df$TP_MT210AGS_USD_MT06 <- sapply(usd_rate_df$TP_MT210AGS_USD_MT06, function(x) { (x / max_usd_rate) * 100 })
+```
+
+```{r, warning=FALSE}
+presidency_df[1] <- apply(presidency_df[1], FUN = special_dateconv_2, MARGIN = 1)
+presidency_df$V1 <- as.Date(presidency_df$V1, format = "%Y-%m-%d")
+presidency_df[, 2] <- sapply(presidency_df[, 2], as.numeric)
+presidency_df[is.na(presidency_df)] <- 1
+```
+
+```{r}
+ba_df[1] <- apply(ba_df[1], FUN = special_dateconv_2, MARGIN = 1)
+ba_df$V1 <- as.Date(ba_df$V1, format = "%Y-%m-%d")
+ba_df[, 2] <- sapply(ba_df[, 2], as.numeric)
+ba_df[is.na(ba_df)] <- 1
+```
+
+```{r}
+gold_df[1] <- apply(gold_df[1], FUN = special_dateconv_2, MARGIN = 1)
+gold_df$V1 <- as.Date(gold_df$V1, format = "%Y-%m-%d")
+gold_df[, 2] <- sapply(gold_df[, 2], as.numeric)
+gold_df[is.na(ba_df)] <- 1
+```
+
+```{r}
+unemployment_df[1] <- apply(unemployment_df[1], FUN = special_dateconv_2, MARGIN = 1)
+unemployment_df$V1 <- as.Date(unemployment_df$V1, format = "%Y-%m-%d")
+unemployment_df[, 2] <- sapply(unemployment_df[, 2], as.numeric)
+unemployment_df[is.na(ba_df)] <- 1
+```
+
+```{r}
+ggplot() + 
+  geom_line(data=usd_rate_df, aes(x=Tarih, y=TP_MT210AGS_USD_MT06, colour = "USD Interest Rate")) + 
+  geom_line(data=dollar_df, aes(x=V1, y=V2, colour="Dollar")) + 
+  geom_line(data=presidency_df, aes(x=V1, y=V2, colour="Presidency")) + 
+  geom_line(data=ba_df, aes(x=V1, y=V2, colour="Albayrak")) + 
+  geom_line(data=gold_df, aes(x=V1,y=V2,colour="Gold")) + 
+  geom_line(data=unemployment_df, aes(x=V1,y=V2,colour="Unemployment")) + 
+  scale_colour_manual("", breaks = c("USD Interest Rate", "Dollar", "Presidency", "Albayrak", "Gold", "Unemployment"), values = c("blue", "red", "green", "purple", "orange", "black")) + 
+  labs(title = "Correlation of terms and USD IR", y="Amount") + theme(legend.text = element_text(size = 16), axis.title.y = element_text(size = 19), axis.title.x = element_text(size = 19), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+- 1. In the early times of 2017, there was a very critical referendum happened in Turkey to convert the parliamentary system to presidential system, which affected the search term "Başkanlık". This particular event has triggered the people to search for "İşsizlik", "Dolar", and "Altın", since any political event has also a direct effect on economy and stability.
+
+- 2. In June 2018, in which the local elections and the first stage of the presidential elections were happened, thus search frequencies of words "Başkanlık", "Dolar", and "Altın" have been drastically increased. This happened due to the great political maelstrom caused by the elections in that year, which ultimately led to change in social structure, which includes unemployment of the citizens of Turkey. The frequency of the search term "İşsizlik" had increased rapidly from the elections until the end of the year.
+- 3. In November 2020, the Minister of Treasury and Finance of Turkey had announced his retirement from a social media platform, which led the public to panic and fear, thus a drastic increase in the frequency of the search terms "Albayrak", "Dolar", "Başkanlık", and "Altın" had happened. However, the search term "İşsizlik" did not get affectted in a scale of the formers.
