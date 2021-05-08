@@ -1,0 +1,272 @@
+---
+title: "IE360_Spring21_Homework2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# IE360 Spring 2021 Homework 2
+
+For Homework 2, I've been requested to analyze a time series and forecast the value of the next month of the related dataset with my own effort.
+
+In the explanation below, I've tried to apply several linear models to forecast the next month's value by utilizing several types of variables.
+
+## Dataset
+
+The dataset that I am given is Firm Statistics-Newly Established Total in Numbers in the Production Statistics class which resides in EVDS. I've selected data from January 2010 to March 2021 to have a sufficient amount of data.
+
+The data and its smoothed version by geom_smooth is in the plot below.
+
+```{r, echo=FALSE, results=FALSE, message=FALSE}
+# EVDS and its prerequisite packages are installed here.
+install.packages("devtools", repos = "http://cran.us.r-project.org")
+devtools::install_github("algopoly/EVDS", force = TRUE)
+install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+install.packages("data.table", repos = "http://cran.us.r-project.org")
+install.packages("forecast", repos = "http://cran.us.r-project.org")
+
+# setting EVDS key
+EVDS::set_evds_key("UIwrpiUF7p")
+
+# loading EVDS and ggplot2
+library(EVDS)
+library(ggplot2)
+library(data.table)
+library(forecast)
+```
+
+```{r, echo=FALSE}
+# the dates in the series are not formatted in any built-in type, so I've written a formatter
+special_dateconv <- function(x) {
+    tokens <- unlist(strsplit(x, "-"))
+    month_length <- nchar(tokens[2])
+    if (month_length == 1) {
+        tokens[2] <- paste("0", tokens[2], sep = "")
+    }
+    tokens <- append(tokens, c("01"))
+    str_date <- paste(tokens, collapse = "-")
+    str_date
+}
+```
+
+```{r, echo=FALSE, results=FALSE}
+main_data <- get_series(series = c("TP.AC2.TOP.A"), start_date = "01-01-2010", end_date = "01-03-2021")
+dataframe <- data.frame(main_data$items$Tarih, main_data$items$TP_AC2_TOP_A)
+names(dataframe)[names(dataframe) == "main_data.items.Tarih"] <- "Date"
+names(dataframe)[names(dataframe) == "main_data.items.TP_AC2_TOP_A"] <- "NET_Number"
+dataframe[, "NET_Number"] <- as.numeric(dataframe[, "NET_Number"])
+dataframe[1] <- apply(dataframe[1], FUN = special_dateconv, MARGIN = 1)
+dataframe$Date <- as.Date(dataframe$Date, format = "%Y-%m-%d")
+```
+
+```{r, message=FALSE}
+options(repr.plot.width=30, repr.plot.height=18)
+ggplot(dataframe, aes(x=Date,y=NET_Number)) +
+geom_line(data=dataframe, aes(x=Date, y=NET_Number, colour = "real")) +
+geom_smooth(se=FALSE, colour = "blue") +
+labs(colour = "Data Types", title = "Newly Established Totals as Numbers", y="NET Number") +
+theme(legend.text = element_text(size = 16), 
+      axis.title.y = element_text(size = 19), 
+      axis.title.x = element_text(size = 19), 
+      axis.text.x = element_text(size = 15), 
+      axis.text.y = element_text(size = 15), 
+      plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+As we can see, there's a decline until mid 2012, then a trend of increase occurs until today, with several exceptions. We can see the structure of the initial data and the processed version.
+
+```{r}
+head(main_data$items, n=10)
+tail(main_data$items, n=10)
+head(dataframe, n=10)
+tail(dataframe, n=10)
+```
+
+After date process, we've two columns, namely date and the NET_Number. NET_Number represents newly established firm total as number and for the rest of the analysis, I will try to forecast NET_Number for April 2021.
+
+At first, I convert the dataframe to datatable to manipulate columns easily. Then, I add trend and month variables to use in further models.
+
+```{r,results=FALSE, warning=FALSE, message=FALSE}
+datatable = data.table(dataframe)
+datatable[, log_NET_Number:=log(dataframe[2])]
+datatable[, trend:=1:.N]
+month = seq(1, 12, by=1)
+datatable = cbind(datatable, month)
+```
+
+Now, the preparation process is done. Let's move forward to the model composing stage.
+
+For my first model, I use only the trend variable in my datatable and inspect the results of the model with summaries, plottings, and residual analysis.
+
+I use checkresiduals function with parameter lag set to 12, since its default value is 10, but I am using a monthly data thus it should be 12. Also, all of my models anaylze the logarithmic form of the data to simplify the results.
+
+```{r}
+fit1 <- lm(log_NET_Number~trend, data=datatable)
+summary(fit1)
+plot(fit1)
+checkresiduals(fit1, lag=12)
+```
+
+As we can see, trend variable has a significant effect on the model, yet the model performed approximately 53%, which can be improved. The residuals show a clustering approach, thus it seems that there's information in the model that needs to be extracted. Variance changes at specific points in the dataset, thus let's keep this in mind for further models. Also, data shows partially normal distribution, and autocorrelative features reside in the current form of the model.
+
+Now, let's create another linear model with the trend and month variable to extract month information.
+
+```{r}
+fit2 <- lm(log_NET_Number~trend+as.factor(month), data = datatable)
+summary(fit2)
+plot(fit2)
+checkresiduals(fit2, lag=12)
+```
+
+In this model, we've retrieved 60% performance, which is better than the previous one. Autocorrelative features are extracted for larger lag values, yet there is information residing in lag1 and lag2 state of the data, since p-value of the Breusch-Godfrey test can reject the null hypothesis. Variance did not change significantly, thus let's try another model with a different approach.
+
+In this model, I've added another data set related with our primary one to see the differences between the two data set. My second dataset is Firm Statistics-Liquidated Total in Numbers, starting from January 2010 until March 2021.
+
+```{r}
+supplementary_data <- get_series(series = c("TP.KAP2.TOP.A"), start_date = "01-01-2010", end_date = "01-03-2021")
+```
+
+```{r}
+datatable[, LT_Number:=as.numeric(supplementary_data$items$TP_KAP2_TOP_A)]
+datatable[, log_LT_Number:=log(datatable[,"LT_Number"])]
+```
+
+```{r, message=FALSE}
+options(repr.plot.width=30, repr.plot.height=18)
+ggplot(data=datatable, aes(x=Date,y=LT_Number)) +
+geom_smooth(se=FALSE, colour = "blue") +
+geom_line(data=datatable, aes(x=Date, y=LT_Number, colour = "real")) +
+labs(colour = "Data Types", title = "Liquidated Totals as Numbers", y="LT Number") +
+theme(legend.text = element_text(size = 16), 
+      axis.title.y = element_text(size = 19), 
+      axis.title.x = element_text(size = 19), 
+      axis.text.x = element_text(size = 15), 
+      axis.text.y = element_text(size = 15), 
+      plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+```{r}
+fit3 <- lm(diff(log_NET_Number)~diff(log_LT_Number), data = datatable)
+summary(fit3)
+plot(fit3)
+checkresiduals(fit3, lag=12)
+```
+
+We can see that the model performed only 16%, which is quite bad. Yet, we can see that the variance of the residuals are minimal and residuals are in normal distribution with mean almost 0. It seems that this data can be used with other variables to complete the model.
+
+Now, I've added the pandemic status for firms that has affected them. In March, April, and May 2020, there's been a lockdown which ultimately affects the newly established firms since face-to-face interactions are restricted. Hence, my next model includes the factor of PandemicClosure variable, which indicates the pandemic status.
+
+```{r}
+datatable[, PandemicClosure:=c(rep(0, 122), rep(1,3), rep(0,10))]
+```
+
+```{r}
+fit6 <- lm(log_NET_Number~trend+as.factor(month)+as.factor(PandemicClosure), data = datatable)
+summary(fit6)
+plot(fit6)
+checkresiduals(fit6, lag=12)
+```
+
+We can see that model performance has increased to 68%, which is 8% more than the previous maximum performance. Yet, the variance became changeable and autocorrelative features are not yet diminished. Residuals still show normal distribution, which holds one of the conditions.
+
+In the next model, I introduce the lag1 variables for log_NET_Number and log_LT_Number to increse the model performance by extracting autoregressive features.
+
+In the first model, only lag1 of log_NET_Number is included. In the second model, only lag1 of log_LT_Number is included. In the third one, both of the lag1 variables are included.
+
+```{r}
+lagged_log_NET_Number <- datatable$log_NET_Number[2:nrow(datatable)]
+lagged_log_NET_Number <- c(lagged_log_NET_Number, rep(lagged_log_NET_Number[1], 1))
+datatable[, lagged_log_NET_Number:=lagged_log_NET_Number]
+lagged_log_LT_Number <- datatable$log_LT_Number[2:nrow(datatable)]
+lagged_log_LT_Number <- c(lagged_log_LT_Number, rep(lagged_log_LT_Number[1], 1))
+datatable[, lagged_log_LT_Number:=lagged_log_LT_Number]
+```
+
+```{r}
+fit7 <- lm(log_NET_Number~trend+as.factor(month)+as.factor(PandemicClosure)+lagged_log_NET_Number, data = datatable)
+summary(fit7)
+plot(fit7)
+checkresiduals(fit7, lag=12)
+```
+
+In the first model, we've retrieved 73.33% performance, which is better than the previous version. Residuals seem to ungroup and variance become lesser than before. Autocorrelative features get diminished significantly and we've the highest p-value for Breusch-Godfrey test, yet we cannot reject the null hypothesis.
+
+```{r}
+fit8 <- lm(log_NET_Number~trend+as.factor(month)+as.factor(PandemicClosure)+lagged_log_LT_Number, data = datatable)
+summary(fit8)
+plot(fit8)
+checkresiduals(fit7, lag=12)
+```
+
+In the second model, we've retrieved 67.93% performance, which is worse than the first version. No significant change in residuals, their distribution, and autocorrelative features.
+
+```{r}
+fit9 <- lm(log_NET_Number~trend+as.factor(month)+as.factor(PandemicClosure)+lagged_log_NET_Number+lagged_log_LT_Number, data = datatable)
+summary(fit9)
+plot(fit9)
+checkresiduals(fit7, lag=12)
+```
+
+In the third model, we've retrieved 73.96% performance, a very slight improvement compared to the first model. Also, no significant change in residuals, their distribution, and autocorrelative features.
+
+Now, let's add the lag0 data of the liquidated total in numbers to increase the model performance, since we now that liquidated total in numbers have resemblance with the newly established total in numbers because variance of their difference was lower than all previous models, and the distribution of the residuals seem to comply with the normal distribution.
+
+```{r}
+fit10 <- lm(log_NET_Number~trend+as.factor(month)+as.factor(PandemicClosure)+log_LT_Number+lagged_log_NET_Number+lagged_log_LT_Number, data = datatable)
+summary(fit10)
+plot(fit10)
+checkresiduals(fit10, lag=12)
+```
+
+We can see that the model performance is now 78.4%, which is the highest of all previous models. Also, residuals seem to moved away from each other. Variance is slightly affected yet considerably small. The distribution of the residuals are complying with the normal distribution and autocorrelative features are sufficiently diminished. This model can be used to predict the next month's log_NET_Number.
+
+```{r}
+predictions <- predict(fit10, datatable)
+datatable[, predictions:=predictions]
+```
+
+```{r}
+options(repr.plot.width=30, repr.plot.height=18)
+ggplot(data=datatable, aes(x=Date,y=LT_Number)) +
+geom_line(data=datatable, aes(x=Date, y=log_NET_Number, colour = "real")) +
+geom_line(data=datatable, aes(x=Date, y=predictions, colour = "pred")) +
+scale_colour_manual("", breaks = c("real", "pred"), values = c("red", "purple")) +
+labs(colour = "Data Types", title = "Newly Established Totals as Numbers", y="NET Number") +
+theme(legend.text = element_text(size = 16), 
+      axis.title.y = element_text(size = 19), 
+      axis.title.x = element_text(size = 19), 
+      axis.text.x = element_text(size = 15), 
+      axis.text.y = element_text(size = 15), 
+      plot.title = element_text(size = 22, hjust = 0.5))
+```
+
+We can see that our model shows similar formation with the actual data, but not exactly similar. Thus our prediction for the next month can be close to the actual value.
+
+Now, let's add the next month's row for prediction and set the values based on the previous month.
+
+```{r}
+datatable <- rbind(datatable, data.table(Date=as.Date("2021-04-01")), fill=TRUE)
+datatable[Date==as.Date("2021-04-01"), trend:=1+datatable[.N-1,trend]]
+datatable[Date==as.Date("2021-04-01"), month:=(1+datatable[.N-1, month])%%12]
+datatable[Date==as.Date("2021-04-01"), LT_Number:=datatable[.N-1, LT_Number]]
+datatable[Date==as.Date("2021-04-01"), log_LT_Number:=datatable[.N-1, log_LT_Number]]
+datatable[Date==as.Date("2021-04-01"), lagged_log_NET_Number:=datatable[.N-1, lagged_log_NET_Number]]
+datatable[Date==as.Date("2021-04-01"), lagged_log_LT_Number:=datatable[.N-1, lagged_log_LT_Number]]
+datatable[Date==as.Date("2021-04-01"), PandemicClosure:=datatable[.N-1,PandemicClosure]]
+tail(datatable, n=1)
+```
+
+Then, predict the value of April based on March's values.
+```{r}
+april_prediction <- predict(fit7, datatable[Date==as.Date("2021-04-01")])
+datatable[Date==as.Date("2021-04-01"), log_NET_Number:=april_prediction]
+datatable[Date==as.Date("2021-04-01"), NET_Number:=round(exp(april_prediction))]
+tail(datatable, n=1)
+```
+
+My model finds the newly established firms total in numbers as 6824. Since the actual value is not published in the website, I cannot compare my value with its real counterpart. Therefore, my analysis of time series regression is hereby finished.
+
+## Conclusion:
+In this task, I've learned more R syntax and libraries with their useful functions as practical benefits and the assumptions of residuals and how to reform model to comply with the assumptions. Thank you for your time to read until here.
