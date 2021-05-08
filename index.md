@@ -7,7 +7,7 @@ In this page, you'll see the tasks given in this course and the way I approach t
 
 + Here, this is the [Assignment 1](./files/IE360_Spring21_Homework1.html)
 
-+ Here, this is the [Assignment 2:](./files/IE360_Spring21_Homework2.html)
++ Here, this is the [Assignment 2](./files/IE360_Spring21_Homework2.html)
 
 + Here, this is the [Assignment 3: NOT RELEASED!]()
 
