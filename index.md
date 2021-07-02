@@ -9,8 +9,8 @@ In this page, you'll see the tasks given in this course and the way I approach t
 
 + Here, this is the [Assignment 2](./files/IE360_Spring21_Homework2.html)
 
-+ Here, this is the [Assignment 3: NOT RELEASED!]()
++ Here, this is the [Assignment 3]()
 
-+ Here, this is the [Assignment 4: NOT RELEASED!]()
++ Here, this is the [Assignment 4-5: NOT RELEASED!]()
 
-+ Here, this is the [Assignment 5: NOT RELEASED!]()
++ Here, this is the [Project Report](./files/IE360_Spring21_ProjectReport.html)
